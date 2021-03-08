@@ -26,20 +26,21 @@ from typing import Callable, Optional
 
 
 class dataset_voc(Dataset):
-  def __init__(self, root_dir, trvaltest, transform=None):
+    def __init__(self, root_dir, trvaltest, transform=None):
+        #TODO
+        pass
 
-    #TODO 
-    #read in pascal VOC dataset
+        # read in pascal VOC dataset
 
-  def __len__(self):
-      return len(self.imgfilenames)
+    def __len__(self):
+        return len(self.imgfilenames)
 
-  def __getitem__(self, idx):
-    #TODO your code here
+    def __getitem__(self, idx):
+        #TODO your code here
 
-    sample = {'image': image, 'label': label, 'filename': self.imgfilenames[idx]}
+        sample = {'image': image, 'label': label, 'filename': self.imgfilenames[idx]}
 
-    return sample
+        return sample
 
 
 
@@ -50,8 +51,8 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
  
     losses = []
     for batch_idx, data in enumerate(trainloader):
-      #TODO
-      
+        #TODO
+        pass
     return np.mean(losses)
     
     
@@ -73,58 +74,58 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
     
     
     with torch.no_grad():
-      losses = []
-      for batch_idx, data in enumerate(dataloader):
+        losses = []
+        for batch_idx, data in enumerate(dataloader):
       
       
-          if (batch_idx%100==0) and (batch_idx>=100):
-            print('at val batchindex: ',batch_idx)
+            if (batch_idx%100==0) and (batch_idx>=100):
+                print('at val batchindex: ',batch_idx)
       
-          inputs = data['image'].to(device)        
-          outputs = model(inputs)
+            inputs = data['image'].to(device)
+            outputs = model(inputs)
 
-          labels = data['label']
+            labels = data['label']
 
-          loss = criterion(outputs, labels.to(device) )
-          losses.append(loss.item())
+            loss = criterion(outputs, labels.to(device) )
+            losses.append(loss.item())
           
-          #this was an accuracy computation
-          #cpuout= outputs.to('cpu')
-          #_, preds = torch.max(cpuout, 1)
-          #labels = labels.float()
-          #corrects = torch.sum(preds == labels.data)
-          #accuracy = accuracy*( curcount/ float(curcount+labels.shape[0]) ) + corrects.float()* ( curcount/ float(curcount+labels.shape[0]) )
-          #curcount+= labels.shape[0]
+            #this was an accuracy computation
+            #cpuout= outputs.to('cpu')
+            #_, preds = torch.max(cpuout, 1)
+            #labels = labels.float()
+            #corrects = torch.sum(preds == labels.data)
+            #accuracy = accuracy*( curcount/ float(curcount+labels.shape[0]) ) + corrects.float()* ( curcount/ float(curcount+labels.shape[0]) )
+            #curcount+= labels.shape[0]
           
-          #TODO: collect scores, labels, filenames
+            #TODO: collect scores, labels, filenames
           
 
     
     for c in range(numcl):   
-      avgprecs[c]= #TODO
+        avgprecs[c]= #TODO
       
     return avgprecs, np.mean(losses), concat_labels, concat_pred, fnames
 
 
 def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterion, optimizer, scheduler, num_epochs, device, numcl):
 
-  best_measure = 0
-  best_epoch =-1
+    best_measure = 0
+    best_epoch =-1
 
-  trainlosses=[]
-  testlosses=[]
-  testperfs=[]
+    trainlosses=[]
+    testlosses=[]
+    testperfs=[]
   
-  for epoch in range(num_epochs):
-    print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-    print('-' * 10)
+    for epoch in range(num_epochs):
+        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        print('-' * 10)
 
 
     avgloss=train_epoch(model,  dataloader_train,  criterion,  device , optimizer )
     trainlosses.append(avgloss)
     
     if scheduler is not None:
-      scheduler.step()
+        scheduler.step()
 
     perfmeasure, testloss,concat_labels, concat_pred, fnames  = evaluate_meanavgprecision(model, dataloader_test, criterion, device, numcl)
     testlosses.append(testloss)
@@ -136,12 +137,12 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
     print('at epoch: ', epoch,' avgperfmeasure ', avgperfmeasure)
 
     if avgperfmeasure > best_measure: #higher is better or lower is better?
-      bestweights= model.state_dict()
-      #TODO track current best performance measure and epoch
+        bestweights= model.state_dict()
+        #TODO track current best performance measure and epoch
       
-      #TODO save your scores
+        #TODO save your scores
 
-  return best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs
+    return best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs
 
 
 
@@ -150,7 +151,7 @@ class yourloss(nn.modules.loss._Loss):
 
     def __init__(self, reduction: str = 'mean') -> None:
         #TODO
-        
+        pass
     def forward(self, input_: Tensor, target: Tensor) -> Tensor:
         
         #TODO
@@ -163,81 +164,83 @@ class yourloss(nn.modules.loss._Loss):
 def runstuff():
 
 
-  config = dict()
+    config = dict()
   
-  config['use_gpu'] = False #True #TODO change this to True for training on the cluster, eh
-  config['lr']=0.005
-  config['batchsize_train'] = 16
-  config['batchsize_val'] = 64
-  config['maxnumepochs'] = 35
+    config['use_gpu'] = True #TODO change this to True for training on the cluster, eh
+    config['lr']=0.005
+    config['batchsize_train'] = 16
+    config['batchsize_val'] = 64
+    config['maxnumepochs'] = 35
 
-  config['scheduler_stepsize']=10
-  config['scheduler_factor']=0.3
+    config['scheduler_stepsize']=10
+    config['scheduler_factor']=0.3
 
 
   
-  # kind of a dataset property
-  config['numcl']=20
+    # kind of a dataset property
+    config['numcl']=20
 
 
 
-  #data augmentations
-  data_transforms = {
-      'train': transforms.Compose([
+    #data augmentations
+    data_transforms = {
+        'train': transforms.Compose([
           transforms.Resize(256),
           transforms.RandomCrop(224),
           transforms.RandomHorizontalFlip(),
           transforms.ToTensor(),
           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-      ]),
-      'val': transforms.Compose([
+        ]),
+        'val': transforms.Compose([
           transforms.Resize(224),
           transforms.CenterCrop(224),
           transforms.RandomHorizontalFlip(),
           transforms.ToTensor(),
           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-      ]),
-  }
+        ]),
+    }
 
 
-  #datasets
-  image_datasets={}
-  image_datasets['train']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
-  image_datasets['val']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
+    #datasets
+    image_datasets={}
+    image_datasets['train']=dataset_voc(root_dir='./data/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
+    image_datasets['val']=dataset_voc(root_dir='./data/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
+#    image_datasets['train']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
+#    image_datasets['val']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
 
-  #dataloaders
-  #TODO use num_workers=1
-  dataloaders = {}
-  dataloaders['train'] = #
-  dataloaders['val'] = #
+    #dataloaders
+    #TODO use num_workers=1
+    dataloaders = {}
+    dataloaders['train'] = #
+    dataloaders['val'] = #
   
 
-  #device
-  if True == config['use_gpu']:
-      device= torch.device('cuda:0')
+    #device
+    if True == config['use_gpu']:
+        device= torch.device('cuda:0')
 
-  else:
-      device= torch.device('cpu')
+    else:
+        device= torch.device('cpu')
 
-  #model
-  #TODO
-  model = #pretrained resnet18
-  #overwrite last linear layer
+    #model
+    #TODO
+    model = #pretrained resnet18
+    #overwrite last linear layer
   
-  model = model.to(device)
+    model = model.to(device)
 
 
-  lossfct = yourloss()
+    lossfct = yourloss()
   
-  #TODO
-  # Observe that all parameters are being optimized
-  someoptimizer = #
+    #TODO
+    # Observe that all parameters are being optimized
+    someoptimizer = #
 
-  # Decay LR by a factor of 0.3 every X epochs
-  #TODO
-  somelr_scheduler = #
+    # Decay LR by a factor of 0.3 every X epochs
+    #TODO
+    somelr_scheduler = #
 
-  best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
+    best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
 
 
 
