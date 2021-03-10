@@ -28,8 +28,11 @@ from typing import Callable, Optional
 class dataset_voc(Dataset):
     def __init__(self, root_dir, trvaltest, transform=None):
         #TODO
-        pass
-
+        self.root_dir = root_dir
+        self.trvaltest = trvaltest
+        self.transform = transform
+        self.imgfilenames = []
+        self.label = []
         # read in pascal VOC dataset
 
     def __len__(self):
@@ -37,6 +40,12 @@ class dataset_voc(Dataset):
 
     def __getitem__(self, idx):
         #TODO your code here
+        image = PIL.image.open(self.imgfilenames[idx]).convert('RGB')
+
+        if self.transform:
+            image = self.transform(image)
+
+        label = self.label(idx)
 
         sample = {'image': image, 'label': label, 'filename': self.imgfilenames[idx]}
 
@@ -162,7 +171,8 @@ class yourloss(nn.modules.loss._Loss):
 
 
 def runstuff():
-
+    np.random.seed(9400)
+    torch.manual_seed(9400)
 
     config = dict()
   
@@ -242,7 +252,7 @@ def runstuff():
 
     best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
 
-
+    #TODO save model: torch.save(model.state_dict(), PATH)
 
 ###########
 # for part2
