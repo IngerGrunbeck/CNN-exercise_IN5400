@@ -68,13 +68,7 @@ class PascalVOC:
         df = df[df['true'] == 1]
         return df['filename'].values
 
-def get_all_image_names(filepath):
-    f = open(filepath, "r")
-    image_names = []
-    for line in f:
-        image_names.append(line.split(" ")[0])
 
-    return image_names
 
 if __name__=='__main__':
 
@@ -84,10 +78,4 @@ if __name__=='__main__':
     dataset='val'
     ls=pv.imgs_from_category_as_list(cat_name, dataset)
     print(len(ls),ls[0])
-
-    image_dict = {"name1" : np.zeros(20).tolist(), "name2" : np.zeros(20).tolist()}
-    for i, cat in enumerate(pv.list_image_sets()):
-        image_names = pv.imgs_from_category_as_list(cat, dataset)
-        for image_name in image_names:
-            image_dict[image_name][i] = 1
 

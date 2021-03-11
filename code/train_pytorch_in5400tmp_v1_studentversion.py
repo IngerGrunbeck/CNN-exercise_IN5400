@@ -27,19 +27,48 @@ from typing import Callable, Optional
 
 class dataset_voc(Dataset):
     def __init__(self, root_dir, trvaltest, transform=None):
-        #TODO
         self.root_dir = root_dir
         self.trvaltest = trvaltest
         self.transform = transform
         self.imgfilenames = []
         self.label = []
-        # read in pascal VOC dataset
+
+        pv = PascalVOC(self.root_dir)
+
+        if trvaltest == 0:
+            fn = os.path.join(pv.set_dir, 'train.txt')
+            with open(fn, 'r') as f:
+                for line in f:
+                    v = line.rstrip()
+                    nm = os.path.join(pv.img_dir, v+'.jpg')
+                    self.imgfilenames.append(nm)
+                    self.label.append([0]*len(pv.list_image_sets()))
+
+            for i, cat in enumerate(pv.list_image_sets()):
+                ls = pv.imgs_from_category_as_list(cat, 'train')
+                for image_name in ls:
+                    self.label[self.imgfilenames.index(image_name + '.jpg')][i] = 1
+
+        if trvaltest == 1:
+            fn = os.path.join(pv.set_dir, 'val.txt')
+            with open(fn, 'r') as f:
+                for line in f:
+                    v = line.rstrip()
+                    nm = os.path.join(pv.img_dir, v+'.jpg')
+                    self.imgfilenames.append(nm)
+                    self.label.append([0]*len(pv.list_image_sets()))
+
+            for i, cat in enumerate(pv.list_image_sets()):
+                ls = pv.imgs_from_category_as_list(cat, 'val')
+                for image_name in ls:
+                    self.label[self.imgfilenames.index(image_name + '.jpg')][i] = 1
+
 
     def __len__(self):
         return len(self.imgfilenames)
 
     def __getitem__(self, idx):
-        #TODO your code here
+
         image = PIL.image.open(self.imgfilenames[idx]).convert('RGB')
 
         if self.transform:
@@ -55,8 +84,7 @@ class dataset_voc(Dataset):
 
 def train_epoch(model,  trainloader,  criterion, device, optimizer ):
 
-    #TODO
-    #model.train() or model.eval() ?
+    #TODO model.train() or model.eval() ?
  
     losses = []
     for batch_idx, data in enumerate(trainloader):
@@ -68,8 +96,7 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
 
 def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
-    #TODO
-    #model.train() or model.eval() ?
+    #TODO model.train() or model.eval() ?
  
 
 
@@ -176,7 +203,7 @@ def runstuff():
 
     config = dict()
   
-    config['use_gpu'] = True #TODO change this to True for training on the cluster, eh
+    config['use_gpu'] = True
     config['lr']=0.005
     config['batchsize_train'] = 16
     config['batchsize_val'] = 64
@@ -219,10 +246,9 @@ def runstuff():
 #    image_datasets['val']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
 
     #dataloaders
-    #TODO use num_workers=1
     dataloaders = {}
-    dataloaders['train'] = #
-    dataloaders['val'] = #
+    dataloaders['train'] = torch.utils.data.DataLoader(datasets['train'], batch_size=config['batchsize_train'], num_workers=1, shuffle=True)
+    dataloaders['val'] = torch.utils.data.DataLoader(datasets['val'], batch_size=config['batchsize_val'], num_workers=1, shuffle=False)
   
 
     #device
@@ -233,7 +259,7 @@ def runstuff():
         device= torch.device('cpu')
 
     #model
-    #TODO
+    #TODO model
     model = #pretrained resnet18
     #overwrite last linear layer
   
@@ -247,7 +273,7 @@ def runstuff():
     someoptimizer = #
 
     # Decay LR by a factor of 0.3 every X epochs
-    #TODO
+    #TODO 
     somelr_scheduler = #
 
     best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
