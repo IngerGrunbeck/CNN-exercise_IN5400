@@ -88,19 +88,32 @@ class dataset_voc(Dataset):
 
 def train_epoch(model,  trainloader,  criterion, device, optimizer ):
 
-    #TODO model.train() or model.eval() ?
+    model.train()
  
     losses = []
     for batch_idx, data in enumerate(trainloader):
-        #TODO
-        pass
+
+        inputs = data['image'].to(device)
+        labels = data['label'].to(device)
+        optimizer.zero_grad()
+
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        losses.append(loss.item())
+
+        if batch_idx % 100 == 0:
+            print('current mean of losses ', np.mean(losses))
     return np.mean(losses)
     
     
 
 def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
-    #TODO model.train() or model.eval() ?
+    #TODO eval
+    model.eval()
  
 
 
