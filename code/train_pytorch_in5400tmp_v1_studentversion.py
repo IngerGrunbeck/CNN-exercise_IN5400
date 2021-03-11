@@ -42,12 +42,14 @@ class dataset_voc(Dataset):
                     v = line.rstrip()
                     nm = os.path.join(pv.img_dir, v+'.jpg')
                     self.imgfilenames.append(nm)
-                    self.label.append([0]*len(pv.list_image_sets()))
+                    #print(nm)
+                    self.label.append(torch.as_tensor([0]*len(pv.list_image_sets())))
 
             for i, cat in enumerate(pv.list_image_sets()):
                 ls = pv.imgs_from_category_as_list(cat, 'train')
                 for image_name in ls:
-                    self.label[self.imgfilenames.index(image_name + '.jpg')][i] = 1
+                    img_id = self.imgfilenames.index(os.path.join(pv.img_dir, image_name +'.jpg'))
+                    self.label[img_id][i] = 1
 
         if trvaltest == 1:
             fn = os.path.join(pv.set_dir, 'val.txt')
@@ -56,12 +58,14 @@ class dataset_voc(Dataset):
                     v = line.rstrip()
                     nm = os.path.join(pv.img_dir, v+'.jpg')
                     self.imgfilenames.append(nm)
-                    self.label.append([0]*len(pv.list_image_sets()))
+                    #print(nm)
+                    self.label.append(torch.as_tensor([0]*len(pv.list_image_sets())))
 
             for i, cat in enumerate(pv.list_image_sets()):
                 ls = pv.imgs_from_category_as_list(cat, 'val')
                 for image_name in ls:
-                    self.label[self.imgfilenames.index(image_name + '.jpg')][i] = 1
+                    img_id = self.imgfilenames.index(os.path.join(pv.img_dir, image_name +'.jpg'))
+                    self.label[img_id][i] = 1
 
 
     def __len__(self):
@@ -69,12 +73,12 @@ class dataset_voc(Dataset):
 
     def __getitem__(self, idx):
 
-        image = PIL.image.open(self.imgfilenames[idx]).convert('RGB')
+        image = PIL.Image.open(self.imgfilenames[idx]).convert('RGB')
 
         if self.transform:
             image = self.transform(image)
 
-        label = self.label(idx)
+        label = self.label[idx]
 
         sample = {'image': image, 'label': label, 'filename': self.imgfilenames[idx]}
 
@@ -120,9 +124,9 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
             inputs = data['image'].to(device)
             outputs = model(inputs)
 
-            labels = data['label']
+            labels = data['label'].to(device)
 
-            loss = criterion(outputs, labels.to(device) )
+            loss = criterion(outputs, labels)
             losses.append(loss.item())
           
             #this was an accuracy computation
@@ -138,7 +142,7 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
     
     for c in range(numcl):   
-        avgprecs[c]= #TODO
+        avgprecs[c]= 0#TODO
       
     return avgprecs, np.mean(losses), concat_labels, concat_pred, fnames
 
@@ -219,6 +223,7 @@ def runstuff():
 
 
 
+
     #data augmentations
     data_transforms = {
         'train': transforms.Compose([
@@ -240,16 +245,16 @@ def runstuff():
 
     #datasets
     image_datasets={}
-    image_datasets['train']=dataset_voc(root_dir='./data/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
-    image_datasets['val']=dataset_voc(root_dir='./data/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
+    image_datasets['train'] = dataset_voc(root_dir='../data/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
+    image_datasets['val'] = dataset_voc(root_dir='../data/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
 #    image_datasets['train']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
 #    image_datasets['val']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
 
     #dataloaders
     dataloaders = {}
-    dataloaders['train'] = torch.utils.data.DataLoader(datasets['train'], batch_size=config['batchsize_train'], num_workers=1, shuffle=True)
-    dataloaders['val'] = torch.utils.data.DataLoader(datasets['val'], batch_size=config['batchsize_val'], num_workers=1, shuffle=False)
-  
+    dataloaders['train'] = torch.utils.data.DataLoader(image_datasets['train'], batch_size=config['batchsize_train'], num_workers=1, shuffle=True)
+    dataloaders['val'] = torch.utils.data.DataLoader(image_datasets['val'], batch_size=config['batchsize_val'], num_workers=1, shuffle=False)
+
 
     #device
     if True == config['use_gpu']:
@@ -260,7 +265,7 @@ def runstuff():
 
     #model
     #TODO model
-    model = #pretrained resnet18
+    model = models.resnet18(pretrained=True)#pretrained resnet18
     #overwrite last linear layer
   
     model = model.to(device)
@@ -270,11 +275,11 @@ def runstuff():
   
     #TODO
     # Observe that all parameters are being optimized
-    someoptimizer = #
+    someoptimizer = optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9)#
 
     # Decay LR by a factor of 0.3 every X epochs
-    #TODO 
-    somelr_scheduler = #
+    #TODO  scheduler
+    somelr_scheduler = None #
 
     best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
 
