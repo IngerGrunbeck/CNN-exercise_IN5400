@@ -95,6 +95,7 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
 
         inputs = data['image'].to(device)
         labels = data['label'].to(device)
+
         optimizer.zero_grad()
 
         outputs = model(inputs)
@@ -132,7 +133,7 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
       
       
             if (batch_idx%100==0) and (batch_idx>=100):
-                print('at val batchindex: ',batch_idx)
+                print('at val batchindex: ', batch_idx)
       
             inputs = data['image'].to(device)
             outputs = model(inputs)
@@ -151,8 +152,9 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
             #curcount+= labels.shape[0]
           
             #TODO: collect scores, labels, filenames
-          
-
+            #scores?
+            #labels: use torch.nn.sigmoid
+            #filenames?
     
     for c in range(numcl):   
         avgprecs[c]= 0#TODO
@@ -160,10 +162,10 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
     return avgprecs, np.mean(losses), concat_labels, concat_pred, fnames
 
 
-def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterion, optimizer, scheduler, num_epochs, device, numcl):
+def traineval2_model_nocv(dataloader_train, dataloader_test,  model,  criterion, optimizer, scheduler, num_epochs, device, numcl):
 
     best_measure = 0
-    best_epoch =-1
+    best_epoch = -1
 
     trainlosses=[]
     testlosses=[]
@@ -200,15 +202,22 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
 
 
 
-class yourloss(nn.modules.loss._Loss):
+class BCEWithLogitsLoss(nn.modules.loss._Loss):
 
-    def __init__(self, reduction: str = 'mean') -> None:
-        #TODO
-        pass
+    def __init__(self, weight: Optional[Tensor] = None, size_average=None, reduce=None, reduction: str = 'mean',
+                 pos_weight: Optional[Tensor] = None) -> None:
+        super(BCEWithLogitsLoss, self).__init__(size_average, reduce, reduction)
+        self.register_buffer('weight', weight)
+        self.register_buffer('pos_weight', pos_weight)
+
     def forward(self, input_: Tensor, target: Tensor) -> Tensor:
-        
-        #TODO
-        return loss
+        assert self.weight is None or isinstance(self.weight, Tensor)
+        assert self.pos_weight is None or isinstance(self.pos_weight, Tensor)
+        return torch.nn.functional.binary_cross_entropy_with_logits(input, target,
+                                                  self.weight,
+                                                  pos_weight=self.pos_weight,
+                                                  reduction=self.reduction)
+
 
 
 
@@ -284,7 +293,7 @@ def runstuff():
     model = model.to(device)
 
 
-    lossfct = yourloss()
+    lossfct = BCEWithLogitsLoss()
   
     #TODO
     # Observe that all parameters are being optimized
