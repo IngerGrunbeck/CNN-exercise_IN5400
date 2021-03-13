@@ -95,13 +95,12 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
 
         inputs = data['image'].to(device)
         labels = data['label'].to(device)
+        labels = labels.float()
 
         optimizer.zero_grad()
 
         outputs = model(inputs)
 
-        print(outputs.size())
-        print(labels.size())
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -135,25 +134,27 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
       
             inputs = data['image'].to(device)
             outputs = model(inputs)
+            cpu_outputs = outputs.to('cpu')
 
-            labels = data['label'].to(device)
+            labels = data['label']
+            labels = labels.float()
 
-            loss = criterion(outputs, labels)
+            loss = criterion(cpu_outputs, labels)
             losses.append(loss.item())
 
-            #TODO save scores
-            sigmoid_output = classifier(outputs)
-            for cat_idx in range(numcl):
-                concat_pred[cat_idx].append(sigmoid_output[cat_idx])
-            for cat in range(numcl):
-                concat_labels[cat_idx].append(labels[cat_idx])
-            fnames.append(data['filename'])
+            sigmoid_output = classifier(cpu_outputs)
+            for img in sigmoid_output:
+                for cat_idx in range(numcl):
+                    concat_pred[cat_idx] = np.append(concat_pred[cat_idx], img[cat_idx])
+            for img in labels:
+                for cat_idx in range(numcl):
+                    concat_labels[cat_idx] = np.append(concat_labels[cat_idx], img[cat_idx])
+            for name in data['filename']:
+                fnames.append(name)
 
-    print(concat_pred[0])
-    print(concat_labels[0])
     for c in range(numcl):   
-        avgprecs[c] = AP(y_true=concat_labels[numcl], y_score=concat_pred[numcl])
-    print(avgprecs)
+        avgprecs[c] = AP(y_true=concat_labels[c], y_score=concat_pred[c])
+
       
     return avgprecs, np.mean(losses), concat_labels, concat_pred, fnames
 
