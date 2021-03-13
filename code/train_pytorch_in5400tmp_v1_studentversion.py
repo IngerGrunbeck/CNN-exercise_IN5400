@@ -18,7 +18,7 @@ import os
 import numpy as np
 
 import PIL.Image
-import sklearn.metrics
+from sklearn.metrics import average_precision_score as AP
 
 from vocparseclslabels import PascalVOC
 
@@ -99,6 +99,9 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
         optimizer.zero_grad()
 
         outputs = model(inputs)
+
+        print(outputs.size())
+        print(labels.size())
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -113,18 +116,13 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
 
 def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
-    #TODO eval
     model.eval()
- 
-
-
-    #curcount = 0
-    #accuracy = 0 
     
     concat_pred=[np.empty(shape=(0)) for _ in range(numcl)] #prediction scores for each class. each numpy array is a list of scores. one score per image
     concat_labels=[np.empty(shape=(0)) for _ in range(numcl)] #labels scores for each class. each numpy array is a list of labels. one label per image
     avgprecs=np.zeros(numcl) #average precision for each class
     fnames = [] #filenames as they come out of the dataloader
+    classifier = torch.nn.Sigmoid()
     
     
     with torch.no_grad():
@@ -142,22 +140,20 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
             loss = criterion(outputs, labels)
             losses.append(loss.item())
-          
-            #this was an accuracy computation
-            #cpuout= outputs.to('cpu')
-            #_, preds = torch.max(cpuout, 1)
-            #labels = labels.float()
-            #corrects = torch.sum(preds == labels.data)
-            #accuracy = accuracy*( curcount/ float(curcount+labels.shape[0]) ) + corrects.float()* ( curcount/ float(curcount+labels.shape[0]) )
-            #curcount+= labels.shape[0]
-          
-            #TODO: collect scores, labels, filenames
-            #scores?
-            #labels: use torch.nn.sigmoid
-            #filenames?
-    
+
+            #TODO save scores
+            sigmoid_output = classifier(outputs)
+            for cat_idx in range(numcl):
+                concat_pred[cat_idx].append(sigmoid_output[cat_idx])
+            for cat in range(numcl):
+                concat_labels[cat_idx].append(labels[cat_idx])
+            fnames.append(data['filename'])
+
+    print(concat_pred[0])
+    print(concat_labels[0])
     for c in range(numcl):   
-        avgprecs[c]= 0#TODO
+        avgprecs[c] = AP(y_true=concat_labels[numcl], y_score=concat_pred[numcl])
+    print(avgprecs)
       
     return avgprecs, np.mean(losses), concat_labels, concat_pred, fnames
 
@@ -217,8 +213,6 @@ class BCEWithLogitsLoss(nn.modules.loss._Loss):
                                                   self.weight,
                                                   pos_weight=self.pos_weight,
                                                   reduction=self.reduction)
-
-
 
 
 
@@ -286,15 +280,16 @@ def runstuff():
         device= torch.device('cpu')
 
     #model
-    #TODO model
-    model = models.resnet18(pretrained=True)#pretrained resnet18
-    #overwrite last linear layer
+    model = models.resnet18(pretrained=True)
+    num_ftrs = model.fc.in_features
+    model.fc = nn.Linear(num_ftrs, config['numcl'])
+    model.fc.reset_parameters()
   
     model = model.to(device)
 
-
-    lossfct = BCEWithLogitsLoss()
-  
+    #TODO fix original back
+    #lossfct = BCEWithLogitsLoss()
+    lossfct = nn.BCEWithLogitsLoss()
     #TODO
     # Observe that all parameters are being optimized
     someoptimizer = optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9)#
