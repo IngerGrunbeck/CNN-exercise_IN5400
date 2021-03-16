@@ -9,7 +9,7 @@ from torch.optim import lr_scheduler
 import torchvision
 from torchvision import datasets, models, transforms, utils
 from torch.utils.data import Dataset, DataLoader
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 from torch import Tensor
 
@@ -85,8 +85,7 @@ class dataset_voc(Dataset):
         return sample
 
 
-
-def train_epoch(model,  trainloader,  criterion, device, optimizer ):
+def train_epoch(model,  trainloader,  criterion, device, optimizer):
 
     model.train()
  
@@ -110,8 +109,7 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
         if batch_idx % 100 == 0:
             print('current mean of losses ', np.mean(losses))
     return np.mean(losses)
-    
-    
+
 
 def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
@@ -173,26 +171,28 @@ def traineval2_model_nocv(dataloader_train, dataloader_test,  model,  criterion,
         print('-' * 10)
 
 
-    avgloss=train_epoch(model,  dataloader_train,  criterion,  device , optimizer )
-    trainlosses.append(avgloss)
-    
-    if scheduler is not None:
-        scheduler.step()
+        avgloss=train_epoch(model,  dataloader_train,  criterion,  device , optimizer)
+        trainlosses.append(avgloss)
 
-    perfmeasure, testloss,concat_labels, concat_pred, fnames  = evaluate_meanavgprecision(model, dataloader_test, criterion, device, numcl)
-    testlosses.append(testloss)
-    testperfs.append(perfmeasure)
-    
-    print('at epoch: ', epoch,' classwise perfmeasure ', perfmeasure)
-    
-    avgperfmeasure = np.mean(perfmeasure)
-    print('at epoch: ', epoch,' avgperfmeasure ', avgperfmeasure)
+        if scheduler is not None:
+            scheduler.step()
 
-    if avgperfmeasure > best_measure: #higher is better or lower is better?
-        bestweights= model.state_dict()
-        #TODO track current best performance measure and epoch
-      
-        #TODO save your scores
+        perfmeasure, testloss, concat_labels, concat_pred, fnames = evaluate_meanavgprecision(model, dataloader_test, criterion, device, numcl)
+        testlosses.append(testloss)
+        testperfs.append(perfmeasure)
+
+        print('at epoch: ', epoch, ' classwise perfmeasure ', perfmeasure)
+
+        avgperfmeasure = np.mean(perfmeasure)
+        print('at epoch: ', epoch, ' avgperfmeasure ', avgperfmeasure)
+
+        if avgperfmeasure > best_measure: #higher is better or lower is better?
+            bestweights= model.state_dict()
+            best_measure = avgperfmeasure
+            best_epoch = epoch
+            print('current best', best_measure, ' at epoch ', best_epoch)
+
+            save_scores(concat_pred, fnames)
 
     return best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs
 
@@ -207,7 +207,7 @@ class BCEWithLogitsLoss(nn.modules.loss._Loss):
         self.register_buffer('weight', weight)
         self.register_buffer('pos_weight', pos_weight)
 
-    def forward(self, input_: Tensor, target: Tensor) -> Tensor:
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
         assert self.weight is None or isinstance(self.weight, Tensor)
         assert self.pos_weight is None or isinstance(self.pos_weight, Tensor)
         return torch.nn.functional.binary_cross_entropy_with_logits(input, target,
@@ -215,6 +215,39 @@ class BCEWithLogitsLoss(nn.modules.loss._Loss):
                                                   pos_weight=self.pos_weight,
                                                   reduction=self.reduction)
 
+
+def save_scores(scores, filenames):
+
+    pv = PascalVOC(root_dir = '../data/VOCdevkit/VOC2012/')
+
+    for i, class_name in enumerate(pv.list_image_sets()):
+        temp_list = zip(scores[i].tolist(), filenames)
+        sorted_pairs = sorted(temp_list, reverse=True)
+        tuples = zip(*sorted_pairs)
+        list1, list2 = [list(tuple) for tuple in tuples]
+        sorted_scores, fnames = np.array(list1), np.array(list2)
+
+        np.save('../saved_scores/' + class_name + '_scores', sorted_scores)
+        np.save('../saved_scores/' + class_name + '_filenames', fnames)
+
+def test_train_curve(epochs, labels = 'loss', train_data=None, test_data=None):
+    plt.figure()
+    plt.xticks(np.arange(0, epochs, step=1))
+
+    if train_data:
+        plt.plot(train_data, label='training')
+    if test_data:
+        plt.plot(test_data, label='validation')
+    plt.legend()
+
+    plt.title('Learning Curve')
+    if labels == 'loss':
+        plt.set_ylabel('Loss')
+    else:
+        plt.ylabels('mAP')
+    plt.xlabel('Epochs')
+
+    plt.show()
 
 
 
@@ -229,19 +262,13 @@ def runstuff():
     config['batchsize_train'] = 16
     config['batchsize_val'] = 64
     config['maxnumepochs'] = 35
+    config['scheduler_stepsize'] = 10
+    config['scheduler_factor'] = 0.3
 
-    config['scheduler_stepsize']=10
-    config['scheduler_factor']=0.3
-
-
-  
     # kind of a dataset property
     config['numcl']=20
 
-
-
-
-    #data augmentations
+    # data augmentations
     data_transforms = {
         'train': transforms.Compose([
           transforms.Resize(256),
@@ -272,15 +299,14 @@ def runstuff():
     dataloaders['train'] = torch.utils.data.DataLoader(image_datasets['train'], batch_size=config['batchsize_train'], num_workers=1, shuffle=True)
     dataloaders['val'] = torch.utils.data.DataLoader(image_datasets['val'], batch_size=config['batchsize_val'], num_workers=1, shuffle=False)
 
-
-    #device
-    if True == config['use_gpu']:
-        device= torch.device('cuda:0')
+    # device
+    if config['use_gpu']:
+        device = torch.device('cuda:0')
 
     else:
-        device= torch.device('cpu')
+        device = torch.device('cpu')
 
-    #model
+    # model
     model = models.resnet18(pretrained=True)
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, config['numcl'])
@@ -288,20 +314,26 @@ def runstuff():
   
     model = model.to(device)
 
-    #TODO fix original back
-    #lossfct = BCEWithLogitsLoss()
-    lossfct = nn.BCEWithLogitsLoss()
-    #TODO
-    # Observe that all parameters are being optimized
-    someoptimizer = optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9)#
+    lossfct = BCEWithLogitsLoss()
+
+    optimizer = optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9)
 
     # Decay LR by a factor of 0.3 every X epochs
-    #TODO  scheduler
-    somelr_scheduler = None #
+    scheduler = lr_scheduler.StepLR(optimizer=optimizer, step_size=config['scheduler_stepsize'], gamma=config['scheduler_factor'], last_epoch=-1)
 
-    best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
+    best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, optimizer, scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'])
+    print('Best', best_measure, ' at epoch ', best_epoch)
 
-    #TODO save model: torch.save(model.state_dict(), PATH)
+    # saving the model
+    torch.save(bestweights, '../saved_model/best_model_state.pth')
+    model.load_state_dict(bestweights)
+    torch.save(model, '../saved_model/best_entire_model.pth')
+
+    # plotting the test curves
+    test_train_curve(trainlosses, testlosses)
+    test_train_curve(testperfs)
+
+
 
 ###########
 # for part2

@@ -15,7 +15,7 @@ class PascalVOC:
             root_dir (string): path to your voc dataset
         """
         self.root_dir = root_dir
-        self.img_dir =  os.path.join(root_dir, 'JPEGImages/')
+        self.img_dir = os.path.join(root_dir, 'JPEGImages/')
         self.ann_dir = os.path.join(root_dir, 'Annotations')
         self.set_dir = os.path.join(root_dir, 'ImageSets', 'Main')
         self.cache_dir = os.path.join(root_dir, 'csvs')
