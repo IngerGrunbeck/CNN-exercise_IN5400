@@ -1,7 +1,9 @@
 
 task/
-data/VOCdevkit/
+data/
+images/
 
 VOCtrainval_11-May-2012.tar
 *.pth
 *.npy
+*jpeg
