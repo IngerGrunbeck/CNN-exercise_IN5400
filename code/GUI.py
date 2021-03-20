@@ -6,7 +6,8 @@ import base64
 import os
 import numpy as np
 
-class GUI:
+
+class run_GUI:
     def __init__(self, root_dir, classes, img_nr):
         self.root_dir = root_dir
         self.classes = classes
@@ -145,7 +146,7 @@ class GUI:
 
 
 if __name__ == '__main__':
-    gui = GUI(root_dir='../saved_scores/', classes=[
+    gui = run_GUI(root_dir='../saved_scores/', classes=[
             'aeroplane', 'bicycle', 'bird', 'boat',
             'bottle', 'bus', 'car', 'cat', 'chair',
             'cow', 'diningtable', 'dog', 'horse',

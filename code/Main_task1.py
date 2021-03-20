@@ -16,12 +16,12 @@ from torch import Tensor
 import time
 import os
 import numpy as np
-from statistics import mean
 
 import PIL.Image
 from sklearn.metrics import average_precision_score as AP
 
 from vocparseclslabels import PascalVOC
+from GUI import run_GUI
 
 from typing import Callable, Optional
 
@@ -372,5 +372,12 @@ def runstuff():
 
 if __name__ == '__main__':
     runstuff()
+    gui = run_GUI(root_dir='../saved_scores/', classes=[
+            'aeroplane', 'bicycle', 'bird', 'boat',
+            'bottle', 'bus', 'car', 'cat', 'chair',
+            'cow', 'diningtable', 'dog', 'horse',
+            'motorbike', 'person', 'pottedplant',
+            'sheep', 'sofa', 'train',
+            'tvmonitor'], img_nr=10)
 
-
+    gui.main()
