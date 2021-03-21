@@ -230,12 +230,12 @@ def test_WSconversion():
         ]),
     }
 
-    #root_dir = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/imagenet300/'
-    #xmllabeldir = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/val/'
-    #synsetfile = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/students/synset_words.txt'
-    root_dir = '../data/imagenet300'
-    xmllabeldir = '../data/val'
-    synsetfile = '../synset_words.txt'
+    root_dir = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/imagenet300/'
+    xmllabeldir = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/val/'
+    synsetfile = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/students/synset_words.txt'
+    #root_dir = '../data/imagenet300'
+    #xmllabeldir = '../data/val'
+    #synsetfile = '../synset_words.txt'
 
     dset = dataset_imagenetvalpart(root_dir, xmllabeldir, synsetfile, maxnum=64, transform=data_transforms['val'])
     dataloader = torch.utils.data.DataLoader(dset, batch_size=64, shuffle=False)  # , num_workers=1)
