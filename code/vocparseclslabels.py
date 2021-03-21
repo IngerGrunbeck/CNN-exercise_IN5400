@@ -72,7 +72,8 @@ class PascalVOC:
 
 if __name__=='__main__':
 
-    pv=PascalVOC('./data/VOCdevkit/VOC2012/')
+    #pv=PascalVOC('./data/VOCdevkit/VOC2012/')
+    pv=PascalVOC('/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/')
 
     cat_name='car'
     dataset='val'

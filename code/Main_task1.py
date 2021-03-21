@@ -222,7 +222,9 @@ class BCEWithLogitsLoss(nn.modules.loss._Loss):
 
 def save_scores(scores, filenames):
 
-    pv = PascalVOC(root_dir = '../data/VOCdevkit/VOC2012/')
+    #pv = PascalVOC(root_dir = '../data/VOCdevkit/VOC2012/')
+    pv = PascalVOC(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/')
+
 
     for i, class_name in enumerate(pv.list_image_sets()):
         temp_list = zip(scores[i].tolist(), filenames)
@@ -325,10 +327,10 @@ def runstuff():
 
     #datasets
     image_datasets={}
-    image_datasets['train'] = dataset_voc(root_dir='../data/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
-    image_datasets['val'] = dataset_voc(root_dir='../data/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
-    #    image_datasets['train']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
-    #    image_datasets['val']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
+    #image_datasets['train'] = dataset_voc(root_dir='../data/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
+    #image_datasets['val'] = dataset_voc(root_dir='../data/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
+    image_datasets['train']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
+    image_datasets['val']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
 
     #dataloaders
     dataloaders = {}

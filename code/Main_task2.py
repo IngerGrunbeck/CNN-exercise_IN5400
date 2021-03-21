@@ -2,26 +2,19 @@
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.optim import lr_scheduler
-
-
 import torchvision
 from torchvision import datasets, models, transforms, utils
 from torch.utils.data import Dataset, DataLoader
-import matplotlib.pyplot as plt
-
 from torch import Tensor
+
+from math import sqrt
 
 import time
 import os
 import numpy as np
-
 import PIL.Image
-from sklearn.metrics import average_precision_score as AP
 
-from vocparseclslabels import PascalVOC
-from GUI import run_GUI
+from getimagenetclasses import *
 
 from typing import Callable, Optional
 
@@ -32,7 +25,7 @@ def setbyname2(targetmodel ,name ,value):
 
         if not hasattr(obj ,components[0]):
             return False
-        elif len(components )= =1:
+        elif len(components )==1:
             if not hasattr(obj ,components[0]):
                 print('object has not the component:' ,components[0])
                 print('nametail:' ,nametail)
@@ -42,7 +35,7 @@ def setbyname2(targetmodel ,name ,value):
             # exit()
             return True
         else:
-            nextob j =getattr(obj ,components[0])
+            nextobj =getattr(obj ,components[0])
 
             newtail = nametail
             newtail.append(components[0])
@@ -51,22 +44,29 @@ def setbyname2(targetmodel ,name ,value):
 
             return iteratset(nextobj ,components[1:] ,value, nametail= newtail)
 
-    component s =name.split('.')
-    succes s =iteratset(targetmodel ,components ,value, nametail=[])
+
+    components =name.split('.')
+    success =iteratset(targetmodel ,components ,value, nametail=[])
     return success
 
 
 
 class wsconv2(nn.Conv2d):
     def __init__(self, in_channels, out_channels, kernel_size, stride,
-                 padding, dilation = 1 , groups =1 , bias = None, eps=1e-12 ):
+                 padding, dilation=1, groups=1, bias=None, copied_weights=None, copied_bias=None, eps=1e-12):
         super(wsconv2, self).__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
 
-        self.ep s =eps
+        self.eps =eps
+        self.weights = copied_weights
+        self.bias = copied_bias
 
-    def forward(self ,x):
-        # torch.nn.functional.conv2d documentation tells about weight shapes
-        pass
+
+
+    def forward(self, x):
+        weight = self.weights
+        std = weight.std(dim=(1, 2, 3))
+        weight = weight / (sqrt(std**2 + self.eps))
+        return torch.nn.functional.conv2d(x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
 
 
 def bntoWSconverter(model):
@@ -75,22 +75,24 @@ def bntoWSconverter(model):
     # or you create a copy of it e.g. using copy.deepcopy(...)
     # https://discuss.pytorch.org/t/are-there-any-recommended-methods-to-clone-a-model/483/17
 
-    lastwasconv 2= False
-    for nm ,module in model.named_modules():
-        # print(nm)
+    lastwasconv2= False
+    for nm, module in model.named_modules():
+        print(nm)
 
         if isinstance(module, nn.Conv2d):
-            # replace, get std
-            lastwasconv 2= True
+            lastwasconv2= True
 
-            usedep s= 1e-12 # use 1e-12 if you add it to a variance term, and 1e-6 if you add it to a standard deviation term
+            usedeps= 1e-12
 
-            # TODO
-            # put in here your wsconv2, dont forget to copy convolution weight and, if exists, the convolution bias into your wsconv2
+            module_weights = module.weight
+            module_bias = module.bias
+            newconv = wsconv2(in_channels=module.in_channels, out_channels=module.out_channels,
+                                kernel_size=module.kernel_size, stride=module.stride,
+                                padding=module.padding, dilation=module.dilation, groups=module.groups,
+                                bias=module.bias, eps=usedeps, copied_weights=module_weights, copied_bias=module_bias)
+            setbyname2(model, nm, newconv)
 
-            setbyname2(model ,nm ,newconv)
-
-        elif isinstance(module ,nn.BatchNorm2d):
+        elif isinstance(module, nn.BatchNorm2d):
 
             if False == lastwasconv2:
                 print('got disconnected batchnorm??')
@@ -103,10 +105,10 @@ def bntoWSconverter(model):
             # you will need here data computed from the preceding nn.Conv2d instance which came along your way
 
             # delete
-            lastwasconv 2= False
+            lastwasconv2= False
 
         else:
-            lastwasconv 2= False
+            lastwasconv2= False
 
 
 # preprocessing: https://pytorch.org/docs/master/torchvision/models.html
@@ -127,21 +129,21 @@ class dataset_imagenetvalpart(Dataset):
         """
 
         self.root_dir = root_dir
-        self.xmllabeldi r =xmllabeldir
+        self.xmllabeldir =xmllabeldir
         self.transform = transform
-        self.imgfilename s =[]
-        self.label s =[]
-        self.endin g =".JPEG"
+        self.imgfilenames =[]
+        self.labels =[]
+        self.ending =".JPEG"
 
-        self.clsdic t =get_classes()
+        self.clsdict =get_classes()
 
 
-        indicestosynsets ,self.synsetstoindices ,synsetstoclassdesc r =parsesynsetwords(synsetfile)
+        indicestosynsets ,self.synsetstoindices ,synsetstoclassdescr =parsesynsetwords(synsetfile)
 
 
         for root, dirs, files in os.walk(self.root_dir):
-            for ct ,name in enumerate(files):
-                n m =os.path.join(root, name)
+            for ct, name in enumerate(files):
+                nm =os.path.join(root, name)
                 # print(nm)
                 if (maxnum >0) and ct >= (maxnum):
                     break
@@ -210,7 +212,7 @@ def comparetwomodeloutputs(model1, model2, dataloader, device):
 
 # routine to test that your copied model at evaluation time works as intended
 def test_WSconversion():
-    config = dict()
+    #config = dict()
 
     # config['use_gpu'] = True
     # config['lr']=0.008 #0.005
@@ -228,9 +230,12 @@ def test_WSconversion():
         ]),
     }
 
-    root_dir = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/imagenet300/'
-    xmllabeldir = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/val/'
-    synsetfile = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/students/synset_words.txt'
+    #root_dir = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/imagenet300/'
+    #xmllabeldir = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/val/'
+    #synsetfile = '/itf-fi-ml/shared/IN5400/dataforall/mandatory1/students/synset_words.txt'
+    root_dir = '../data/imagenet300'
+    xmllabeldir = '../data/val'
+    synsetfile = '../synset_words.txt'
 
     dset = dataset_imagenetvalpart(root_dir, xmllabeldir, synsetfile, maxnum=64, transform=data_transforms['val'])
     dataloader = torch.utils.data.DataLoader(dset, batch_size=64, shuffle=False)  # , num_workers=1)
@@ -252,3 +257,7 @@ def test_WSconversion():
     avgdiff = comparetwomodeloutputs(model, model2, dataloader, device)
 
     print('model checking averaged difference', avgdiff)  # order 1e-3 is okay, 1e-2 is still okay.
+
+
+if __name__ == '__main__':
+    test_WSconversion()
